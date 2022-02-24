@@ -1,0 +1,421 @@
+#imports
+import discord
+import random
+import os
+import youtube_dl
+from discord.ext import commands
+from discord.ext.commands import Bot
+
+client = discord.Client()
+
+#intents
+intents = discord.Intents.default()
+intents.members = True
+
+#command prefix
+client = commands.Bot(command_prefix = '.', intents = intents)
+
+#bot is online + status
+@client.event
+async def on_ready():
+    print("Bot is ready")
+    await client.change_presence(status=discord.Status.online, activity=discord.Game('.helpp for commands :)'))
+
+#member join (in terminal)
+@client.event
+async def on_member_join(member):
+    print(f'{member} has joined a server.')
+    await client.get_channel(823702597928091669).send(f'Hello and Welcome to the server {member.mention}!')
+
+#member leave (in terminal)
+@client.event
+async def on_member_remove(member):
+    print(f'{member} has left a server.')
+    await client.get_channel(823702597928091669).send(f'Peace Out {member.mention}!✌️')
+
+#.ping command
+@client.command()
+async def ping(ctx):
+    await ctx.send(f'🏓Pong! {round(client.latency * 1000)}ms')
+
+#.8ball command
+@client.command(aliases=['8ball', 'test'])
+async def _8ball(ctx, *, question):
+    responses = ['It is certain.',
+                'As I see it, yes.',
+                'Ask again later.',
+                'Better not tell you now.',
+                'Cannot predict now.',
+                'Concentrate and ask again.',
+                'Don’t count on it.',
+                'It is certain.',
+                'It is decidedly so.',
+                'Most likely.',
+                'My reply is no.',
+                'My sources say no.',
+                'Outlook not so good.',
+                'Outlook good.',
+                'Reply hazy, try again.',
+                'Signs point to yes.',
+                'Very doubtful.',
+                'Without a doubt.',
+                'Yes.',
+                'Yes – definitely.',
+                'You may rely on it.']
+    await ctx.send(f'Question: {question}\nAnswer: {random.choice(responses)}')
+
+#8ball error message
+@_8ball.error
+async def _8ball_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please specify a question.')
+
+#.clear command
+@client.command()
+async def clear(ctx, amount : int):
+    await ctx.channel.purge(limit=amount)
+
+#clear error message
+@clear.error
+async def clear_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please specify the amount of messages you would like to delete.')
+
+#kick command
+@client.command()
+async def kick(ctx, member : discord.Member, *, reason=None):
+    await member.kick(reason=reason)
+
+#kick error message
+@kick.error
+async def kick_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please specify the person you would like to kick and why.')
+
+#ban command
+@client.command()
+async def ban(ctx, member : discord.Member, *, reason=None):
+    await member.ban(reason=reason)
+    await ctx.send(f'Banned {member.metion}')
+
+#ban error message
+@ban.error
+async def ban_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please specify the person you would like to ban and why.')
+
+#unban command
+@client.command()
+async def unban(ctx, *, id):
+    await ctx.guild.unban(discord.Object(id))
+    await ctx.send(f'Unbanned {user.Object(id)}')
+
+#unban error message
+@unban.error
+async def unban_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please specify the person(id) you would like to unban.')
+
+
+#prefix
+@client.command()
+async def prefix(ctx):
+    await ctx.send(f'My prefix for commands is "."!')
+
+#reaction roles add
+@client.event
+async def on_raw_reaction_add(payload):
+    message_id = payload.message_id
+    if message_id == 825696041696362506:
+        guild_id = payload.guild_id
+        guild = discord.utils.find(lambda g : g.id == guild_id, client.guilds)
+
+        if payload.emoji.name == '\U0001f633':
+            role = discord.utils.get(guild.roles, name='A')
+        elif payload.emoji.name == '\U0001f644':
+            role = discord.utils.get(guild.roles, name='B')
+        elif payload.emoji.name == '\U0001f9e2':
+            role = discord.utils.get(guild.roles, name='C')
+        elif payload.emoji.name == '\U0001f608':
+            role = discord.utils.get(guild.roles, name='D')
+        else:
+            role = discord.utils.get(guild.roles, name=payload.emoji.name)
+
+        if role is not None:
+            member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+            if member is not None:
+                await member.add_roles(role)
+                print("done")
+            else:
+                print("Member not found")
+        else:
+            print("Role not found")
+
+#reaction roles remove
+@client.event
+async def on_raw_reaction_remove(payload):
+    message_id = payload.message_id
+    if message_id == 825696041696362506:
+        guild_id = payload.guild_id
+        guild = discord.utils.find(lambda g : g.id == guild_id, client.guilds)
+
+        if payload.emoji.name == '\U0001f633':
+            role = discord.utils.get(guild.roles, name='A')
+        elif payload.emoji.name == '\U0001f644':
+            role = discord.utils.get(guild.roles, name='B')
+        elif payload.emoji.name == '\U0001f9e2':
+            role = discord.utils.get(guild.roles, name='C')
+        elif payload.emoji.name == '\U0001f608':
+            role = discord.utils.get(guild.roles, name='D')
+        else:
+            role = discord.utils.get(guild.roles, name=payload.emoji.name)
+
+        if role is not None:
+            member = discord.utils.find(lambda m : m.id == payload.user_id, guild.members)
+            if member is not None:
+                await member.remove_roles(role)
+                print("done")
+            else:
+                print("Member not found")
+        else:
+            print("Role not found")
+
+#Music Bot Commands
+
+#Play command
+@client.command()
+async def play(ctx, url : str):
+    song_there = os.path.isfile("song.mp3")
+    try:
+        if song_there:
+            os.remove("song.mp3")
+    except PermissionError:
+        await ctx.send("Wait for the current playing music to end or use the '.stop' command")
+        return
+
+    voiceChannel = discord.utils.get(ctx.guild.voice_channels, name='General')
+    await voiceChannel.connect()
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'postprocessors': [{
+            'key': 'FFmpegExtractAudio',
+            'preferredcodec': 'mp3',
+            'preferredquality': '192',
+        }],
+    }
+    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
+    for file in os.listdir("./"):
+        if file.endswith(".mp3"):
+            os.rename(file, "song.mp3")
+    voice.play(discord.FFmpegPCMAudio("song.mp3"))
+
+#Play error message
+@play.error
+async def play_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send('Please specifiy a URL so I can play the audio :).')
+
+#Leave command 
+@client.command()
+async def leave(ctx):
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    if voice.is_connected():
+        await voice.disconnect()
+
+#Pause command 
+@client.command()
+async def pause(ctx):
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    if voice.is_playing():
+        voice.pause()
+
+#Resume command 
+@client.command()
+async def resume(ctx):
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    if voice.is_paused():
+        voice.resume()
+
+#Stop command
+@client.command()
+async def stop(ctx):
+    voice = discord.utils.get(client.voice_clients, guild=ctx.guild)
+    voice.stop()
+
+#version command + improved help + embed
+@client.event
+async def on_message(message):
+    
+    if message.content == '.version':
+        general_channel = client.get_channel(823702597928091669)
+
+        myEmbed = discord.Embed(title = "Version Code", description = "The bot is in version 1.0", color = 0x00cc00)
+        myEmbed.add_field(name="Version Code", value = "v1.0.0", inline = False)
+        myEmbed.add_field(name = "Date Released", value = "March 2021", inline = False)
+        myEmbed.set_footer(text = "sample")
+        myEmbed.set_author(name = "Bot made by: Bryce K")
+
+        await general_channel.send(embed=myEmbed)
+    
+    elif message.content == '.helpp':
+        general_channel = client.get_channel(823702597928091669)
+
+        myEmbed = discord.Embed(title = ".helpp", description = "Commands!", color = 0xdb34eb)
+        myEmbed.add_field(name="Games", value = ".8ball, .tictactoe, .ping", inline = False)
+        myEmbed.add_field(name = "Music", value = ".play (yturl), .pause, .stop, .leave", inline = False)
+        myEmbed.add_field(name = "Mod Commands", value = ".kick, .ban, .clear, .unban", inline = False)
+        myEmbed.add_field(name = "Misc", value = ".prefix", inline = False)
+        myEmbed.set_footer(text = "CSIA, v1.0.0")
+        myEmbed.set_author(name = "Bot made by: Bryce K")
+        
+
+        await general_channel.send(embed=myEmbed)
+    
+    await client.process_commands(message)
+
+#tic tac toe game
+
+#initializations
+player1 = ""
+player2 = ""
+turn = ""
+gameOver = True
+
+board = []
+
+winningConditions = [
+    [0, 1, 2],
+    [3, 4, 5],
+    [6, 7, 8],
+    [0, 3, 6],
+    [1, 4, 7],
+    [2, 5, 8],
+    [0, 4, 8],
+    [2, 4, 6]
+]
+
+@client.command()
+async def tictactoe(ctx, p1: discord.Member, p2: discord.Member):
+    global count
+    global player1
+    global player2
+    global turn
+    global gameOver
+
+    await ctx.send("Use .place + and an int between 1 and 9 (inclusive) to place a mark!")
+
+    #makes board
+    if gameOver:
+        global board
+        board = ["\U00002b1c", "\U00002b1c", "\U00002b1c",
+                 "\U00002b1c", "\U00002b1c", "\U00002b1c",
+                 "\U00002b1c", "\U00002b1c", "\U00002b1c", ]
+        turn = ""
+        gameOver = False
+        count = 0
+
+        player1 = p1
+        player2 = p2
+
+        #prints the board
+        line = ""
+        for x in range(len(board)):
+            if x == 2 or x == 5 or x == 8:
+                line += " " + board[x]
+                await ctx.send(line)
+                line = ""
+            else:
+                line += " " + board[x]
+
+        #player turns (who goes first)
+        num = random.randint(1, 2)
+        if num == 1:
+            turn = player1
+            await ctx.send("It is <@" + str(player1.id) + ">'s turn")
+        elif num == 2:
+            turn = player2
+            await ctx.send("It is <@" + str(player2.id) + ">'s turn")
+    else:
+        await ctx.send("A game is already being played, wait for the game to finish before starting a new game")
+
+#Playing the game
+@client.command()
+async def place(ctx, pos: int):
+    global turn
+    global player1
+    global player2
+    global board
+    global count
+    global gameOver
+
+    if not gameOver:
+        mark = ""
+        if turn == ctx.author:
+            if turn == player1:
+                mark =  "\U0001f1fd"
+            elif turn == player2:
+                mark = "\U0001f17e"
+            if 0 < pos < 10 and board[pos - 1] == "\U00002b1c":
+                board[pos - 1] = mark
+                count += 1
+
+                #prints board
+                line = ""
+                for x in range(len(board)):
+                    if x == 2 or x == 5 or x == 8:
+                        line += " " + board[x]
+                        await ctx.send(line)
+                        line = ""
+                    else:
+                        line += " " + board[x]
+
+                #checking winning condition
+                checkWinner(winningConditions, mark)
+                print(count)
+                if gameOver == True:
+                    await ctx.send(mark + " wins")
+                elif count >= 9:
+                    gameOver = True
+                    await ctx.send("The game has tied")
+                
+                #switching turns
+                if turn == player1:
+                    turn = player2
+                elif turn == player2:
+                    turn = player1
+            else:
+                await ctx.send("Choose and int between 1 and 9 (inclusive) and a tile that has not been played on yet")
+        else:
+            await ctx.send("It is not your turn, please wait for the opponent to make thier turn")
+    else:
+        await ctx.send("Please start a new game using the .tictactoe command")
+
+#check winner function
+def checkWinner(winningConditions, mark):
+    global gameOver
+    for condition in winningConditions:
+        if board[condition[0]] == mark and board[condition[1]] == mark and board[condition[2]] == mark:
+            gameOver = True
+
+@tictactoe.error
+async def tictactoe_error(ctx, error):
+    print(error)
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Please @ two members for this command")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send("Please make sure to mention / ping players")
+
+@place.error
+async def place_error(ctx, error):
+    if isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("Please enter the position you would like to mark.")
+    elif isinstance(error, commands.BadArgument):
+        await ctx.send("Please make sure to enter an integer.")
+        
+
+#turns on the bot
+client.run('ODIzNzIxMTE2NzE0Nzk1MDE4.YFk8Eg.YSZub5LOGv0Xuuk7J0u2dfJ_1OY')
+
